@@ -135,3 +135,71 @@ last_step_time = pygame.time.get_ticks()
 buttons = []
 painting = None
 
+
+
+
+#load the selected pattern and reset the simulation
+def load_pattern(name, near_edge=False):
+    global board, initial_board, pattern_name, generation, running, history, comparison
+
+    pattern_name = name
+    board = np.zeros((N, N), dtype=np.uint8)
+
+    if name == "random":
+        board = (np.random.random((N, N)) < 0.18).astype(np.uint8)
+    else:
+        pattern = pattern_array(name)
+        h, w = pattern.shape
+
+        #place the pattern in the center or near the bottom right edge
+        y = N - h - 1 if near_edge else (N - h) // 2
+        x = N - w - 1 if near_edge else (N - w) // 2
+
+        board[y:y+h, x:x+w] = pattern
+
+    initial_board = board.copy()
+    generation = 0
+    running = False
+    history = [int(board.sum())]
+    comparison = None
+
+
+
+
+#calculate the next generation and update population history
+def step():
+    global board, generation, history
+
+    board = next_generation(board, rule, boundary)
+    generation += 1
+
+    history.append(int(board.sum()))
+
+    if len(history) > 200:
+        history.pop(0)
+
+
+
+
+#compare both rules after thirty generations
+def compare_30():
+    global comparison
+
+    a = initial_board.copy()
+    b = initial_board.copy()
+
+    for _ in range(30):
+        a = next_generation(a, "conway", boundary)
+        b = next_generation(b, "custom", boundary)
+
+    comparison = (
+        int(a.sum()),
+        int(b.sum()),
+        int(np.count_nonzero(a != b))
+    )
+
+    print("comparison after 30 generations")
+    print("conway B3/S23:", comparison[0], "live cells")
+    print("custom B34/S23:", comparison[1], "live cells")
+    print("different cells:", comparison[2])
+
