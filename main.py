@@ -203,3 +203,77 @@ def compare_30():
     print("custom B34/S23:", comparison[1], "live cells")
     print("different cells:", comparison[2])
 
+
+
+
+#handle user actions and simulation controls
+def action(name):
+    global running, board, initial_board, pattern_name, generation
+    global history, speed, rule, boundary, comparison, last_step_time
+
+    #select the initial pattern
+    if name.startswith("pattern:"):
+        load_pattern(name.split(":", 1)[1])
+
+    #move the selected pattern near the board edge
+    elif name == "edge":
+        if pattern_name in PATTERN_NAMES and pattern_name != "random":
+            load_pattern(pattern_name, near_edge=True)
+
+    #select boundary conditions
+    elif name == "periodic":
+        boundary = "periodic"
+        comparison = None
+
+    elif name == "reflect":
+        boundary = "reflective"
+        comparison = None
+
+    #select transition rules
+    elif name == "conway":
+        rule = "conway"
+        comparison = None
+
+    elif name == "custom":
+        rule = "custom"
+        comparison = None
+
+    #start or pause the simulation
+    elif name == "toggle":
+        running = not running
+        last_step_time = pygame.time.get_ticks()
+
+    #execute a single generation
+    elif name == "step":
+        running = False
+        step()
+
+    #restore the initial board
+    elif name == "reset":
+        board = initial_board.copy()
+        generation = 0
+        running = False
+        history = [int(board.sum())]
+        comparison = None
+
+    #clear all cells
+    elif name == "clear":
+        board = np.zeros((N, N), dtype=np.uint8)
+        initial_board = board.copy()
+        pattern_name = "empty"
+        generation = 0
+        running = False
+        history = [0]
+        comparison = None
+
+    #adjust simulation speed
+    elif name == "faster":
+        speed = min(30, speed + 2)
+
+    elif name == "slower":
+        speed = max(1, speed - 2)
+
+    #compare the transition rules
+    elif name == "compare":
+        compare_30()
+
