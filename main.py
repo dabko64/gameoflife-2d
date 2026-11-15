@@ -545,3 +545,99 @@ def draw():
 
     pygame.display.flip()
 
+
+
+
+#initialize the simulation
+load_pattern("glider")
+active = True
+
+#main application loop
+while active:
+
+    #handle user input events
+    for event in pygame.event.get():
+
+        #close the application
+        if event.type == pygame.QUIT:
+            active = False
+
+        #handle keyboard shortcuts
+        elif event.type == pygame.KEYDOWN:
+            shortcuts = {
+                pygame.K_SPACE: "toggle",
+                pygame.K_n: "step",
+                pygame.K_r: "reset",
+                pygame.K_e: "edge",
+                pygame.K_MINUS: "slower",
+                pygame.K_KP_MINUS: "slower",
+                pygame.K_EQUALS: "faster",
+                pygame.K_KP_PLUS: "faster",
+            }
+
+            if event.key in shortcuts:
+                action(shortcuts[event.key])
+
+        #handle mouse clicks
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mx, my = event.pos
+
+            #draw or erase a cell on the board
+            if (BOARD_X <= mx < BOARD_X + BOARD_PX
+                    and BOARD_Y <= my < BOARD_Y + BOARD_PX):
+
+                row = (my - BOARD_Y) // CELL
+                col = (mx - BOARD_X) // CELL
+
+                painting = 1 - int(board[row, col])
+                running = False
+
+                board[row, col] = painting
+                initial_board = board.copy()
+
+                generation = 0
+                history = [int(board.sum())]
+                comparison = None
+
+
+            #handle control panel buttons
+            else:
+                for rect, name in buttons:
+                    if rect.collidepoint(event.pos):
+                        action(name)
+                        break
+
+        #draw cells while dragging the mouse
+        elif event.type == pygame.MOUSEMOTION and painting is not None:
+            mx, my = event.pos
+
+            if (BOARD_X <= mx < BOARD_X + BOARD_PX
+                    and BOARD_Y <= my < BOARD_Y + BOARD_PX):
+
+                row = (my - BOARD_Y) // CELL
+                col = (mx - BOARD_X) // CELL
+
+                board[row, col] = painting
+                initial_board = board.copy()
+
+                generation = 0
+                history = [int(board.sum())]
+                comparison = None
+
+        #stop drawing when the mouse button is released
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            painting = None
+
+    #update the simulation at the selected speed
+    now = pygame.time.get_ticks()
+
+    if running and now - last_step_time >= 1000 / speed:
+        step()
+        last_step_time = now
+
+    #refresh the display
+    draw()
+    clock.tick(60)
+
+#close pygame
+pygame.quit()
