@@ -277,3 +277,131 @@ def action(name):
     elif name == "compare":
         compare_30()
 
+
+
+
+
+#render text on the screen
+def draw_text(message, x, y, color=TEXT, text_font=None):
+    text_font = text_font or font
+    screen.blit(text_font.render(str(message), True, color), (x, y))
+
+
+#draw an interactive button
+def draw_button(label, x, y, w, h, command, selected=False):
+    rect = pygame.Rect(x, y, w, h)
+    hovered = rect.collidepoint(pygame.mouse.get_pos())
+
+    pygame.draw.rect( screen, ACTIVE if selected else (HOVER if hovered else BUTTON), rect, border_radius=8)
+
+    if selected:
+        pygame.draw.rect(screen, ALIVE, rect, width=1, border_radius=8)
+
+    label_surface = small_font.render(label, True, TEXT)
+    screen.blit(label_surface, label_surface.get_rect(center=rect.center))
+
+    buttons.append((rect, command))
+
+
+#draw the live cell population chart
+def draw_chart(values, rect):
+    pygame.draw.rect(screen, (25, 36, 51), rect, border_radius=6)
+
+    pygame.draw.line(screen,(58, 71, 88),(rect.left, rect.bottom - 2),(rect.right, rect.bottom - 2) )
+
+    if len(values) < 2:
+        return
+
+    values = values[-100:]
+    lo, hi = min(values), max(values)
+    scale = max(hi - lo, 1)
+    points = []
+
+    for i, value in enumerate(values):
+        x = rect.left + 5 + i * (rect.width - 10) / (len(values) - 1)
+        y = rect.bottom - 5 - (value - lo) * (rect.height - 10) / scale
+
+        points.append((int(x), int(y)))
+
+    pygame.draw.lines(screen, ALIVE, False, points, 2)
+
+
+#render the board and application interface
+def draw():
+    buttons.clear()
+    screen.fill(BG)
+
+    #convert the board into a pygame surface
+    pixels = np.empty((N, N, 3), dtype=np.uint8)
+    pixels[:] = DEAD
+    pixels[board.T.astype(bool)] = ALIVE
+
+    tiny = pygame.surfarray.make_surface(pixels)
+    big = pygame.transform.scale(tiny, (BOARD_PX, BOARD_PX))
+
+    screen.blit(big, (BOARD_X, BOARD_Y))
+    screen.blit(grid_overlay, (BOARD_X, BOARD_Y))
+
+    pygame.draw.rect(screen,(91, 114, 135),pygame.Rect(BOARD_X, BOARD_Y, BOARD_PX, BOARD_PX),1 )
+
+    #display keyboard shortcuts
+    draw_text("mouse: draw cells  |  SPACE: start/pause  |  N: step  |  R: reset  |  E: edge", BOARD_X, 822, MUTED, small_font)
+
+    x = PANEL_X
+    cw = (PANEL_W - 9) // 2
+
+    #application title
+    draw_text("GAME OF LIFE", x, 17, TEXT, title_font)
+    draw_text("200 x 200  |  moore neighborhood", x, 54, MUTED, small_font)
+
+    #initial pattern selection
+    draw_text("INITIAL PATTERNS", x, 87, TEXT, heading_font)
+
+    for i, name in enumerate(PATTERN_NAMES):
+        bx = x + (i % 2) * (cw + 9)
+        by = 116 + (i // 2) * 41
+
+        draw_button(name.title(), bx, by, cw, 34,"pattern:" + name,pattern_name == name)
+
+    #boundary condition selection
+    draw_text("BOUNDARY CONDITIONS", x, 249, TEXT, heading_font)
+    draw_button("periodic", x, 275, cw, 34,"periodic", boundary == "periodic")
+    draw_button( "reflective", x + cw + 9, 275, cw, 34, "reflect", boundary == "reflective")
+
+    #transition rule selection
+    draw_text("TRANSITION RULES", x, 320, TEXT, heading_font)
+    draw_button("conway B3/S23", x, 347, cw, 34,"conway", rule == "conway")
+    draw_button("custom B34/S23", x + cw + 9, 347, cw, 34,"custom", rule == "custom")
+
+    #simulation controls
+    draw_text("CONTROLS", x, 394, TEXT, heading_font)
+    draw_button("pause" if running else "start", x, 421, cw, 34, "toggle")
+    draw_button("next step (N)", x + cw + 9, 421, cw, 34, "step")
+    draw_button("reset (R)", x, 463, cw, 34, "reset")
+    draw_button("clear", x + cw + 9, 463, cw, 34, "clear")
+
+    draw_button("move pattern near edge (E)", x, 505, PANEL_W, 34, "edge")
+
+    #simulation speed controls
+    draw_text("SIMULATION SPEED", x, 551, TEXT, heading_font)
+    draw_button("slower -", x, 578, cw, 32, "slower")
+    draw_button("faster +", x + cw + 9, 578, cw, 32, "faster")
+    draw_text(f"{speed} generations/s", x, 613, MUTED, small_font)
+
+    #display simulation statistics
+    draw_text("STATISTICS", x, 639, TEXT, heading_font)
+    draw_text(f"generation: {generation}  |  alive: {int(board.sum())}", x, 664, TEXT, small_font)
+    draw_text("minimum 30 generations: " + ("OK" if generation >= 30 else "not yet"),x, 684,ALIVE if generation >= 30 else MUTED,small_font)
+    draw_chart(history, pygame.Rect(x, 708, PANEL_W, 42))
+
+    #display rule comparison results
+    draw_button( "COMPARE RULES AFTER 30 STEPS", x, 758, PANEL_W, 34, "compare")
+
+    if comparison is None:
+        draw_text("comparison from the same initial state", x, 801, MUTED, small_font)
+    else:
+        draw_text( f"conway: {comparison[0]}  |  custom: {comparison[1]}", x, 800, TEXT, small_font)
+
+        draw_text(f"different cells after 30 steps: {comparison[2]}", x, 820, MUTED, small_font )
+
+    pygame.display.flip()
